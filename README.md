@@ -80,8 +80,102 @@ The UID2 Service Operator TD WF is grouped into two main sections:
 1. Secrets: Hidden keys that are stored in the Project-level “Secrets” tab
 2. Configuration: Two YML Files used to configure 1) top-level parameters and 2) TD Tables for Export to UID2 Service Operator
 
+### Secrets
 | Secrets | README |
 | ------ | ------ |
 | pytd.apikey | TD Master API Key for pytd SDK to query & update tables. A  UID2 Specific service-account API Key with limited access to  UID2 related databases & tables is recommended (principle of least privilege). <br>*NOTE– This must be in pure TDI API Key format “nnnnn/xxxxxxxxxxxxxxxxxxxxxxxxx" (without quotes), NOT HTTP Authorization Header format “TD1 nnnnn/xxxxxxxxxxxxxxxxxxxxxxxxx"* |
 | ttd.apikey | TTD API Key, provided by The Trade Desk as `{UID2 Integ Keys > api_key}` |
 | ttd.clientsecret | TTD API Key, provided by The Trade Desk as `{UID2 Integ Keys > v2_secret}` |
+
+### Configuration
+
+#### Main WF Config `ttd_uid2.dig`  
+
+```
+_export: 
+  # pytd SDK Config
+  pytd:
+    # TD API Server Endpoint
+    apiserver: https://api.treasuredata.com/
+  # API Config
+  ttd:
+    # Max parallel allowed by TTD is 10 (ten); probably will never change
+    parallel_max: 10
+    # TTD Environment, e.g. Integration, Production, etc.
+    environment: operator-integ.uidapi.com
+    # UID2 Mapping API Endpoint; probably will never change
+    url_map: /v2/identity/map
+    # Salt-Bucket Rotation API Endpoint; probably will never change
+    url_buckets: /v2/identity/buckets
+  # TTD/TD Integration Database
+  td_uid2_env:
+    # The TD Database to store TTD UID2 Mappings and WF Metadata
+    #   Will get created if not exists
+    #   All required tables will also get created if not exists
+    #   *NO* Initial setup required, simply configure desired database name
+    #     and the WF will install and configure itself accordingly
+    db: MY_DATABASE_NAME
+  # TD Source Tables for DII/UID2 Mapping
+  #   Many source tables may be configured
+  #   Configure in include file for managability
+  #   Configuration design specifications listed below
+  !include : config/td_uid2_src_lst.yaml
+```
+#### Source Tables `config/td_uid2_src_lst.yaml`
+```
+# List of TD Source Tables
+#   3 Tables shown here for example, many tables may be included
+#   Tables can be sourced from any TD database, 
+#     including Unification and/or Audience databases
+td_uid2_src_lst:
+    # Database Name
+  - src_db: stage_db
+    # Table Name
+    src_tbl: email_send
+    # ID Column if available
+    #   If no ID column, use the literal term "null" (w/o quotes)
+    src_id_col: td_id
+    # The name of the Source DII column, can be any name
+    src_dii_col: email_address
+    # The type of DII, either "EMAIL" or "PHONE"; Case-Sensitive, w/o quotes
+    src_dii_typ: EMAIL
+
+    # Database Name
+  - src_db: unification_db
+    # Table Name
+    src_tbl: ecommerce_orders
+    # ID Column if available
+    #   If no ID column, use the literal term "null" (w/o quotes)
+    src_id_col: td_id
+    # The name of the Source DII column, can be any name
+    src_dii_col: primary_email
+    # The type of DII, either "EMAIL" or "PHONE"; Case-Sensitive, w/o quotes
+    src_dii_typ: EMAIL
+
+    # Database Name
+  - src_db: audience_db
+    # Table Name
+    src_tbl: sms_contacts
+    # ID Column if available
+    #   If no ID column, use the literal term "null" (w/o quotes)
+    src_id_col: td_id
+    # The name of the Source DII column, can be any name
+    src_dii_col: phone_number
+    # The type of DII, either "EMAIL" or "PHONE"; Case-Sensitive, w/o quotes
+    src_dii_typ: PHONE
+```
+
+### Output Tables
+| **COLUMN**       | **TYPE** | **DESCRIPTION**|
+| ---------------- | -------- | ----------------------------- |
+| `time`           | INTEGER  | Unixtime of record `INSERT` |
+| `src_db`         | VARCHAR  | The source database of the DII value |
+| `src_tbl`        | VARCHAR  | The source table of the DII value |
+| `src_id_col`     | VARCHAR  | The ID column for the source table of the DII value |
+| `src_id`         | VARCHAR  | The ID value of the record in the source table of the DII value |
+| `src_col`        | VARCHAR  | The Source column in the source table of the DII value |
+| `src_typ`        | VARCHAR  | The type of DII, one of `{EMAIL, PHONE}`|
+| `src_data`       | VARCHAR  | The source DII value |
+| `advertising_id` | VARCHAR  | The UID2 value (Defined as `advertising_id` in Service Operator Service API's) |
+| `bucket_id`      | VARCHAR  | The TTD Salt Bucket ID |
+| `is_current`     | INTEGER  | Does the UID2 (`advertising_id` column) contain a current UID2 value from a non-expired Salt Bucket? <br> *   `0` (zero) – NO – Indicates that the `ttd_uid2_ids` record is either new, or that the Salt Bucket has expired. In either case, a new UID2 must be fetched from TTD <br> *   `1` (one) – YES – Indicates that the `ttd_uid2_ids` record has a current UID2 in the `advertising_id` column, a new UID2 does _NOT_ need to be fetched from TTD <br> The `is_current` state is managed during each WF run and should always have the value `1` (one) for all records at the completion of every successful WF run. If any records have the value `0` (zero) after the WF run has completed that means that something failed. The two primary causes of DII ↔︎ UID2 Mapping failure are: * <br>   The DII format is not correct and therefore cannot be mapped by the UID2 Service Operator. For example, the email `myname@mysite` is not a valid email format (the domain is missing TLD extension), and cannot be mapped by the Operator. Phone numbers must be in valid [E.164](https://en.wikipedia.org/wiki/E.164) format. Note that the Operator _will_ map any email address or phone number as long as it is in the expected format, the email/phone does not need to be an actual live or working DII. <br> * The TD UID2 Mapping Workflow failed for any reason
