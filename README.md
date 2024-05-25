@@ -2,7 +2,7 @@
 
 This workflow is designed to take DII (Directly Identifying Information) such as Emails and Phone Numbers and turn them into UID2s following the UID2 Framework. 
 
-### High Level Workflow 
+## High Level Workflow 
 The following steps provide a high-level outline of the workflow intended for organizations that collect user data and push it to DSPs—for example, advertisers, identity graph providers, and third-party data providers.
 
 The following steps are an example of how an advertiser can integrate with UID2:
@@ -74,11 +74,10 @@ If an existing DII source is removed then it will no longer be collected going f
 Please contact Treasure Data Solution Engineering for details.
 
 ## Workflow Installation
-The UID2 Service Operator TD WF is grouped into two main sections:
+The UID2 Coverter Workflow is grouped into two main sections that need to be configured before running the workflow:
 
-
-1. Secrets: Hidden keys that are stored in the Project-level “Secrets” tab
-2. Configuration: Two YML Files used to configure 1) top-level parameters and 2) TD Tables for Export to UID2 Service Operator
+1. Secrets: Secret keys that need to be configured in the Project-level “Secrets” tab
+2. Configuration: Two YML Files used to configure 1) top-level parameters and 2) TD Tables and columns containing DII for Export to UID2 Service Operator
 
 ### Secrets
 | Secrets | README |
@@ -165,7 +164,9 @@ td_uid2_src_lst:
     src_dii_typ: PHONE
 ```
 
-### Output Tables
+## Output Tables
+
+#### `ttd_uid2_ids` – Transactional Table – Main TTD UID2 Table
 | **COLUMN**       | **TYPE** | **DESCRIPTION**|
 | ---------------- | -------- | ----------------------------- |
 | `time`           | INTEGER  | Unixtime of record `INSERT` |
@@ -178,4 +179,70 @@ td_uid2_src_lst:
 | `src_data`       | VARCHAR  | The source DII value |
 | `advertising_id` | VARCHAR  | The UID2 value (Defined as `advertising_id` in Service Operator Service API's) |
 | `bucket_id`      | VARCHAR  | The TTD Salt Bucket ID |
-| `is_current`     | INTEGER  | Does the UID2 (`advertising_id` column) contain a current UID2 value from a non-expired Salt Bucket? <br> *   `0` (zero) – NO – Indicates that the `ttd_uid2_ids` record is either new, or that the Salt Bucket has expired. In either case, a new UID2 must be fetched from TTD <br> *   `1` (one) – YES – Indicates that the `ttd_uid2_ids` record has a current UID2 in the `advertising_id` column, a new UID2 does _NOT_ need to be fetched from TTD <br> The `is_current` state is managed during each WF run and should always have the value `1` (one) for all records at the completion of every successful WF run. If any records have the value `0` (zero) after the WF run has completed that means that something failed. The two primary causes of DII ↔︎ UID2 Mapping failure are: * <br>   The DII format is not correct and therefore cannot be mapped by the UID2 Service Operator. For example, the email `myname@mysite` is not a valid email format (the domain is missing TLD extension), and cannot be mapped by the Operator. Phone numbers must be in valid [E.164](https://en.wikipedia.org/wiki/E.164) format. Note that the Operator _will_ map any email address or phone number as long as it is in the expected format, the email/phone does not need to be an actual live or working DII. <br> * The TD UID2 Mapping Workflow failed for any reason
+| `is_current`     | INTEGER  | Does the UID2 (`advertising_id` column) contain a current UID2 value from a non-expired Salt Bucket? <br> *   `0` (zero) – NO – Indicates that the `ttd_uid2_ids` record is either new, or that the Salt Bucket has expired. In either case, a new UID2 must be fetched from TTD <br> *   `1` (one) – YES – Indicates that the `ttd_uid2_ids` record has a current UID2 in the `advertising_id` column, a new UID2 does _NOT_ need to be fetched from TTD <br> The `is_current` state is managed during each WF run and should always have the value `1` (one) for all records at the completion of every successful WF run. If any records have the value `0` (zero) after the WF run has completed that means that something failed. The two primary causes of DII ↔︎ UID2 Mapping failure are: * <br>   The DII format is not correct and therefore cannot be mapped by the UID2 Service Operator. For example, the email `myname@mysite` is not a valid email format (the domain is missing TLD extension), and cannot be mapped by the Operator. Phone numbers must be in valid [E.164](https://en.wikipedia.org/wiki/E.164) format. Note that the Operator _will_ map any email address or phone number as long as it is in the expected format, the email/phone does not need to be an actual live or working DII. <br> * The TD UID2 Mapping Workflow failed for any reason |
+
+#### `ttd_uid2_ids_archive` – Transactional Table – Main UID2 Table
+**Same schema as ttd_uid2_ids table, except that the is_current will always have the value -1 to indicate archive records.
+
+| **COLUMN**       | **TYPE** | **DESCRIPTION**    |
+| ---------------- | -------- | -------------------------------------- |
+| `time`           | INTEGER  | Unixtime of record `INSERT` |
+| `src_db`         | VARCHAR  | The source database of the DII value  |
+| `src_tbl`        | VARCHAR  | The source table of the DII value   |
+| `src_id_col`     | VARCHAR  | The ID column for the source table of the DII value  |
+| `src_id`         | VARCHAR  | The ID value of the record in the source table of the DII value |
+| `src_col`        | VARCHAR  | The Source column in the source table of the DII value |
+| `src_typ`        | VARCHAR  | The type of DII, one of `{EMAIL, PHONE}`  |
+| `src_data`       | VARCHAR  | The source DII value   |
+| `advertising_id` | VARCHAR  | The TTD UID2 value (Defined as `advertising_id` in Operator Service API's)     |
+| `bucket_id`      | VARCHAR  | The Salt Bucket ID   |
+| `is_current`     | INTEGER  | Always has the value `-1` (negative-one) to indicate archived records.   |
+
+#### `ttd_bucket_resp` – Staging Table – For UID Salt Bucket Rotation API Responses
+** Important – This table is also used to calculate the since_timestamp for the Salt Bucket rotation API. Even though this table is classified as a staging table, the records should NEVER be manually deleted as they are required for the subsequent WF run to accurately calculate the since_timestamp.
+
+If the records in this table are ever accidentally deleted, then it is recommend to re-map UID2 for ALL records in the ttd_uid2_ids table.
+
+| **COLUMN**     | **TYPE** | **DESCRIPTION**  |
+| -------------- | -------- | ------------ |
+| `time`   | INTEGER  | Unixtime of record `INSERT`  |
+| `bucket_id`    | VARCHAR  | The UID Salt Bucket ID   |
+| `last_updated` | VARCHAR  | Timestamp in ISO 8601 format of when this Salt Bucket was last updated by Operator (not used by this WF, for analysis purposes). |
+
+#### `ttd_uid2_rqst` – Staging Table – For UID Map API Requests
+| **COLUMN**      | **TYPE** | **DESCRIPTION** |
+| --------------- | -------- |-------------- |
+| `time`          | INTEGER  | Unixtime of record `INSERT` |
+| `rnk_num`       | LONG     | The sequence number of this UID2 Service Operator API batch request |
+| `ttd_uid2_rqst` | VARCHAR  | The actual JSON payload for the UID2 Service Operator API batch request. It is logical and valid JSON, stored as `VARCHAR` for simplicity and convenience. It is stored as plain-text unencrypted, the TD Python client script manages all security and encryption/decryption internally. |
+
+#### `ttd_uid2_resp` – Staging Table – For UID2 Map API Responses
+| **COLUMN**       | **TYPE** | **DESCRIPTION**                                                                                                   |
+| ---------------- | -------- |------ |
+| `time`           | INTEGER  | Unixtime of record `INSERT`  |
+| `rnk_num`        | LONG     | The sequence number of this UID2 Service Operator API batch request (not used by this WF, for analysis purposes). |
+| `identifier`     | VARCHAR  | The DII value, either an Email or Phone |
+| `advertising_id` | VARCHAR  | The UID2 value (Defined as `advertising_id` in Operator Service |
+| `bucket_id`      | VARCHAR  | The Salt Bucket ID   |
+
+## Additional Resources
+
+https://unifiedid.com/assets/images/UID2Workflows-fb37032af050f36f82905ce67aa18c62.jpg 
+https://unifiedid.com/assets/images/advertiser-flow-mermaid-d3b67f69ab9afe0241a56fbd3bbf6389.png 
+
+UID2 Mapping & Salt Bucket Rotation
+
+- https://unifiedid.com/docs/intro
+- https://unifiedid.com/docs/guides/advertiser-dataprovider-guide
+- https://unifiedid.com/docs/endpoints/post-identity-map
+- https://unifiedid.com/docs/getting-started/gs-normalization-encoding#phone-number-normalization
+- https://unifiedid.com/docs/endpoints/post-identity-buckets
+
+TTD Export Integration
+- https://partner.thetradedesk.com/v3/portal/data/doc/post-data-advertiser-external
+- https://partner.thetradedesk.com/v3/portal/data/doc/DataEnvironments
+- https://partner.thetradedesk.com/v3/portal/data/doc/DataAuthentication
+
+Treasure Data TTD Export Integration
+
+- htps://docs.treasuredata.com/display/public/INT/The+Trade+Desk+Export+Integration
