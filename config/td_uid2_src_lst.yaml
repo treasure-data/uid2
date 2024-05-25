@@ -1,0 +1,27 @@
+#
+# Few; ~100K
+#
+
+td_uid2_src_lst:
+  - src_db: cc_demo_retail
+    src_tbl: email_send
+    src_id_col: td_id
+    src_dii_col: email
+    src_dii_typ: EMAIL
+  - src_db: cc_demo_retail
+    src_tbl: ecommerce_orders
+    src_id_col: td_id
+    src_dii_col: email
+    src_dii_typ: EMAIL
+  - src_db: cc_demo_retail
+    src_tbl: app_registration
+    src_id_col: td_id
+    src_dii_col: email
+    src_dii_typ: EMAIL
+  - src_db: cc_demo_retail
+    src_tbl: sms_send
+    src_id_col: td_id
+    src_dii_col: phone_number
+    src_dii_typ: PHONE
+
+
