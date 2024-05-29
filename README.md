@@ -2,6 +2,14 @@
 
 This workflow is designed to take DII (Directly Identifying Information) such as Emails and Phone Numbers and turn them into UID2s following the UID2 Framework. 
 
+### Why Use UID2 
+
+- **Establish identity without 3rd party cookies** and retain precise targeting with a persistent identifier (e.g. phone number, email) 
+- **Measure and optimize**  digital ad performance across the scale of your 1st party data 
+    * Follow the full customer journey and track which interactions lead to conversion
+    * Effectively cap frequencies based on user interactions
+    * Based on 1st party audience insights, strategically improve targeting strategies to drive positive outcomes and improve ROAS
+
 ## High Level Workflow 
 The following steps provide a high-level outline of the workflow intended for organizations that collect user data and push it to DSPs—for example, advertisers, identity graph providers, and third-party data providers.
 
@@ -21,7 +29,7 @@ The following process occurs in the background:
 ## Concepts
 ### UID2 Definition
 
-From TTD: https://unifiedid.com/docs/intro
+https://unifiedid.com/docs/intro
 >UID2 is a framework that enables deterministic identity for advertising opportunities on the open internet for many participants across the advertising ecosystem. The UID2 framework enables logged-in experiences from publisher websites, mobile apps, and Connected TV (CTV) apps to monetize through programmatic workflows. Built as an open-source, standalone solution with its own unique namespace, the framework offers the user transparency and privacy controls designed to meet local market requirements.
 
 ** SEE the UID2 Reference Documentation section at the end of this page for reference diagrams and links
@@ -227,8 +235,11 @@ If the records in this table are ever accidentally deleted, then it is recommend
 
 ## Additional Resources
 
-https://unifiedid.com/assets/images/UID2Workflows-fb37032af050f36f82905ce67aa18c62.jpg 
-https://unifiedid.com/assets/images/advertiser-flow-mermaid-d3b67f69ab9afe0241a56fbd3bbf6389.png 
+
+<img style="float: right;" src="https://unifiedid.com/assets/images/UID2AdvertiserAndThirdPartyDataProviderWorkflow-2ac59ad79bedaa9d265f6e4d4f99efa5.svg">
+
+<img style="float: right;" src="https://unifiedid.com/assets/images/advertiser-flow-mermaid-d3b67f69ab9afe0241a56fbd3bbf6389.png">
+
 
 UID2 Mapping & Salt Bucket Rotation
 
