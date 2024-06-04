@@ -78,14 +78,17 @@ New DII sources can be added at any time and will be included in the next WF run
 
 If an existing DII source is removed then it will no longer be collected going forward, but the existing DII ↔︎ UID2 mappings from that source will NOT be deleted by the WF. They can be manually selected and deleted per the ttd_uid2_ids.src_db and ttd_uid2_ids.src_tbl columns.
 
-### Workflow Code
-Please contact Treasure Data Solution Engineering for details.
 
 ## Workflow Installation
-The UID2 Coverter Workflow is grouped into two main sections that need to be configured before running the workflow:
+
+### Where to Install 
+This code should be run immediately after ID Unification and the Output Table `ttd_uid2_ids` should be added as a behavior table to the Parent Segment. 
+
+### Setup
+The UID2 Converter Workflow is grouped into two main sections that need to be configured before running the workflow:
 
 1. Secrets: Secret keys that need to be configured in the Project-level “Secrets” tab
-2. Configuration: Two YML Files used to configure 1) top-level parameters and 2) TD Tables and columns containing DII for Export to UID2 Service Operator
+2. Configuration: Two YML Files are used to configure 1) top-level parameters and 2) TD Tables and columns containing DII for Export to UID2 Service Operator
 
 ### Secrets
 | Secrets | README |
@@ -174,7 +177,7 @@ td_uid2_src_lst:
 
 ## Output Tables
 
-#### `ttd_uid2_ids` – Transactional Table – Main TTD UID2 Table
+#### `ttd_uid2_ids` – Transactional Table – Main UID2 Table 
 | **COLUMN**       | **TYPE** | **DESCRIPTION**|
 | ---------------- | -------- | ----------------------------- |
 | `time`           | INTEGER  | Unixtime of record `INSERT` |
