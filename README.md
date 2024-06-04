@@ -94,8 +94,8 @@ The UID2 Converter Workflow is grouped into two main sections that need to be co
 | Secrets | README |
 | ------ | ------ |
 | pytd.apikey | TD Master API Key for pytd SDK to query & update tables. A  UID2 Specific service-account API Key with limited access to  UID2 related databases & tables is recommended (principle of least privilege). <br>*NOTE– This must be in pure TDI API Key format “nnnnn/xxxxxxxxxxxxxxxxxxxxxxxxx" (without quotes), NOT HTTP Authorization Header format “TD1 nnnnn/xxxxxxxxxxxxxxxxxxxxxxxxx"* |
-| ttd.apikey | TTD API Key, provided by The Trade Desk as `{UID2 Integ Keys > api_key}` |
-| ttd.clientsecret | TTD API Key, provided by The Trade Desk as `{UID2 Integ Keys > v2_secret}` |
+| ttd.apikey | UID2 API Key, provided by UID2 Operator as `{UID2 Integ Keys > api_key}` |
+| ttd.clientsecret | UID2 API Secret, provided by UID2 Operator as `{UID2 Integ Keys > v2_secret}` |
 
 ### Configuration
 
@@ -109,17 +109,17 @@ _export:
     apiserver: https://api.treasuredata.com/
   # API Config
   ttd:
-    # Max parallel allowed by TTD is 10 (ten); probably will never change
+    # Max parallel allowed by UID2 Operator is 10 (ten); probably will never change
     parallel_max: 10
-    # TTD Environment, e.g. Integration, Production, etc.
+    # UID2 Environment, e.g. Integration, Production, etc.
     environment: operator-integ.uidapi.com
     # UID2 Mapping API Endpoint; probably will never change
     url_map: /v2/identity/map
     # Salt-Bucket Rotation API Endpoint; probably will never change
     url_buckets: /v2/identity/buckets
-  # TTD/TD Integration Database
+  # TD Integration Database
   td_uid2_env:
-    # The TD Database to store TTD UID2 Mappings and WF Metadata
+    # The TD Database to store UID2 Mappings and WF Metadata
     #   Will get created if not exists
     #   All required tables will also get created if not exists
     #   *NO* Initial setup required, simply configure desired database name
@@ -189,8 +189,8 @@ td_uid2_src_lst:
 | `src_typ`        | VARCHAR  | The type of DII, one of `{EMAIL, PHONE}`|
 | `src_data`       | VARCHAR  | The source DII value |
 | `advertising_id` | VARCHAR  | The UID2 value (Defined as `advertising_id` in Service Operator Service API's) |
-| `bucket_id`      | VARCHAR  | The TTD Salt Bucket ID |
-| `is_current`     | INTEGER  | Does the UID2 (`advertising_id` column) contain a current UID2 value from a non-expired Salt Bucket? <br> *   `0` (zero) – NO – Indicates that the `ttd_uid2_ids` record is either new, or that the Salt Bucket has expired. In either case, a new UID2 must be fetched from TTD <br> *   `1` (one) – YES – Indicates that the `ttd_uid2_ids` record has a current UID2 in the `advertising_id` column, a new UID2 does _NOT_ need to be fetched from TTD <br> The `is_current` state is managed during each WF run and should always have the value `1` (one) for all records at the completion of every successful WF run. If any records have the value `0` (zero) after the WF run has completed that means that something failed. The two primary causes of DII ↔︎ UID2 Mapping failure are: * <br>   The DII format is not correct and therefore cannot be mapped by the UID2 Service Operator. For example, the email `myname@mysite` is not a valid email format (the domain is missing TLD extension), and cannot be mapped by the Operator. Phone numbers must be in valid [E.164](https://en.wikipedia.org/wiki/E.164) format. Note that the Operator _will_ map any email address or phone number as long as it is in the expected format, the email/phone does not need to be an actual live or working DII. <br> * The TD UID2 Mapping Workflow failed for any reason |
+| `bucket_id`      | VARCHAR  | The Salt Bucket ID |
+| `is_current`     | INTEGER  | Does the UID2 (`advertising_id` column) contain a current UID2 value from a non-expired Salt Bucket? <br> *   `0` (zero) – NO – Indicates that the `ttd_uid2_ids` record is either new, or that the Salt Bucket has expired. In either case, a new UID2 must be fetched from UID2 Operator <br> *   `1` (one) – YES – Indicates that the `ttd_uid2_ids` record has a current UID2 in the `advertising_id` column, a new UID2 does _NOT_ need to be fetched from UID2 Operator <br> The `is_current` state is managed during each WF run and should always have the value `1` (one) for all records at the completion of every successful WF run. If any records have the value `0` (zero) after the WF run has completed that means that something failed. The two primary causes of DII ↔︎ UID2 Mapping failure are: * <br>   The DII format is not correct and therefore cannot be mapped by the UID2 Service Operator. For example, the email `myname@mysite` is not a valid email format (the domain is missing TLD extension), and cannot be mapped by the Operator. Phone numbers must be in valid [E.164](https://en.wikipedia.org/wiki/E.164) format. Note that the Operator _will_ map any email address or phone number as long as it is in the expected format, the email/phone does not need to be an actual live or working DII. <br> * The TD UID2 Mapping Workflow failed for any reason |
 
 #### `ttd_uid2_ids_archive` – Transactional Table – Main UID2 Table
 **Same schema as ttd_uid2_ids table, except that the is_current will always have the value -1 to indicate archive records.
