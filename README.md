@@ -81,7 +81,12 @@ If an existing DII source is removed then it will no longer be collected going f
 
 ## Workflow Installation
 
-### Where to Install 
+### Install 
+To upload this workflow, download this workflow to your local machine and then use the [TD Toolbelt](https://api-docs.treasuredata.com/en/tools/cli/quickstart/#td-toolbelt-quickstart) to Upload this folder as a Project to Treasure Workflows using the `td wf push <project_name>` command inside the workflow root folder. 
+
+
+
+### Where to Run 
 This code should be run immediately after ID Unification and the Output Table `ttd_uid2_ids` should be added as a behavior table to the Parent Segment. 
 
 ### Setup
