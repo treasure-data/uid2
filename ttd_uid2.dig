@@ -5,7 +5,7 @@ _export:
   # TTD API Config
   ttd:
     parallel_max: 10 # Max parallel allowed by TTD is 10 (ten), probably will never change
-    environment: operator-integ.uidapi.com
+    environment: prod.uidapi.com # testing - operator-iteg.uidapi.com
     url_map: /v2/identity/map
     url_buckets: /v2/identity/buckets
   # TTD/TD Integration Database
