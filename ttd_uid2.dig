@@ -10,7 +10,7 @@ _export:
     url_buckets: /v2/identity/buckets
   # TTD/TD Integration Database
   td_uid2_env:
-    db: cc_ttd_uid2_001
+    db: MY_DATABASE_NAME
   # TD Source Tables for DII/UID2 Mapping
   !include : config/td_uid2_src_lst.yaml
 
