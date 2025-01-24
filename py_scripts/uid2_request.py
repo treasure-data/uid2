@@ -54,7 +54,13 @@ def post_bucket_requests(since_ts, db, url):
    # Delete all the old expired buckets
    df_rqst = td.read_td_query("DELETE FROM ttd_bucket_resp WHERE 1=1", engine)
    # Request all rotated buckets since_ts
-   str_rqst = '{"since_timestamp": "'+since_ts+'"}'
+   timestamp = datetime.fromisoformat(since_ts.replace('Z', '+00:00'))
+    
+    dt_utc = timestamp.astimezone(timezone.utc)
+    dt_utc_without_tz = dt_utc.replace(tzinfo=None)
+    print(dt_utc_without_tz.isoformat())
+    str_rqst = '{"since_timestamp": "'+dt_utc_without_tz.isoformat()+'"}'
+   print(str_rqst) 
    json_resp = ttd_post_rqst(url, str_rqst)
    df_resp = json_normalize(json_resp['body'])
    logevt(db, 'RESP', 'RCV', f'{int(int(df_resp.size) / 2)}')
