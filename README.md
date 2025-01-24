@@ -117,7 +117,7 @@ _export:
     # Max parallel allowed by UID2 Operator is 10 (ten); probably will never change
     parallel_max: 10
     # UID2 Environment, e.g. Integration, Production, etc.
-    environment: operator-integ.uidapi.com
+    environment: prod.uidapi.com
     # UID2 Mapping API Endpoint; probably will never change
     url_map: /v2/identity/map
     # Salt-Bucket Rotation API Endpoint; probably will never change
