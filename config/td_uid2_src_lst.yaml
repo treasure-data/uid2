@@ -1,7 +1,17 @@
 #
 # Few; ~100K
 #
+# List of TD Source Tables
+#   3 Tables shown here for example, many tables may be included
+#   Tables can be sourced from any TD database, 
+#     including Unification and/or Audience databases
 
+# - src_db: # Database Name
+#   src_tbl: # Table Name
+#   src_id_col: # Unification/Join ID Column if available; If no ID column, use the literal term "null" (w/o quotes)
+#   src_dii_col: # The name of the Source DII column, can be any name
+#   src_dii_typ: # The type of DII, either "EMAIL" or "PHONE"; Case-Sensitive, w/o quotes
+    
 td_uid2_src_lst:
   - src_db: cc_demo_retail
     src_tbl: email_send
