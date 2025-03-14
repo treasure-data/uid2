@@ -1,0 +1,32 @@
+_export: 
+  td_uid2_env:
+    db: cdp_unification_yum_us
+  # TD Source Tables for DII/UID2 Mapping
+  !include : config/td_uid2_src_lst.yaml
+
+
++uid2_response_insert:
+  _export:
+    # 1 Indicates current as of last WF run, will potentially get updated per salt-bucket rotations in future WF runs
+    is_current: 1
+  td>: sql/uid2_response_insert.sql
+  database: ${td_uid2_env.db}
+  insert_into: ttd_uid2_ids
+
++uid2_response_archive:
+  _export:
+    # -1 Indicates archived status, archive records are intended to be immutable
+    #     Future UID2 for given DII record in [ttd_uid2_ids] table may change per salt bucket rotation
+    #     But the archive records in [ttd_uid2_ids_archive] table will remain unchanged
+    is_current: -1
+  td>: sql/uid2_response_insert.sql
+  database: ${td_uid2_env.db}
+  insert_into: ttd_uid2_ids_archive
+
++uid2_response_delete_stale:
+  td>: sql/uid2_response_delete_stale.sql
+  database: ${td_uid2_env.db}
+
++uid2_archive_reqst:
+  td>: sql/uid2_request_archive.sql
+  database: ${td_uid2_env.db}

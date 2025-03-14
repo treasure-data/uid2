@@ -9,8 +9,8 @@ SELECT
   , 'PENDING' AS advertising_id
   , 'PENDING' AS bucket_id
   , 0 AS is_current
-FROM ${td_uid2_src.src_db}.${td_uid2_src.src_tbl}
-WHERE NOT EXISTS (SELECT src_data FROM ${td_uid2_env.db}.ttd_uid2_ids WHERE src_data = ${td_uid2_src.src_db}.${td_uid2_src.src_tbl}.${td_uid2_src.src_dii_col})
-AND 
-${td_uid2_src.src_dii_col} is not null
+FROM ${td_uid2_src.src_db}.${td_uid2_src.src_tbl} Src
+WHERE NOT EXISTS (SELECT 1 FROM ${td_uid2_env.db}.ttd_uid2_ids  Tgt 
+                   WHERE Tgt.src_data = Src.${td_uid2_src.src_dii_col})
+AND ${td_uid2_src.src_dii_col} is not null
 ;

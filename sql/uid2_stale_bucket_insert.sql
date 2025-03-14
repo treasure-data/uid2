@@ -7,8 +7,9 @@ SELECT DISTINCT
   , src_typ
   , src_data
   , advertising_id
-  , ${td_uid2_env.db}.ttd_uid2_ids.bucket_id AS bucket_id
+  , Uid.bucket_id AS bucket_id
   , 0 AS is_current
-FROM ${td_uid2_env.db}.ttd_uid2_ids
-JOIN ${td_uid2_env.db}.ttd_bucket_resp ON ${td_uid2_env.db}.ttd_bucket_resp.bucket_id = ${td_uid2_env.db}.ttd_uid2_ids.bucket_id
+FROM ${td_uid2_env.db}.ttd_uid2_ids Uid
+JOIN ${td_uid2_env.db}.ttd_bucket_resp Resp
+ ON Resp.bucket_id = Uid.bucket_id
 ;
