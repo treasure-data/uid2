@@ -6,6 +6,7 @@ import time
 import json
 import pandas as pd
 from pandas import json_normalize
+import datetime
 from datetime import datetime, timezone
 
 os.system(f"{sys.executable} -m pip install requests")
@@ -16,13 +17,53 @@ os.system(f"{sys.executable} -m pip install -U pytd==1.0.0")
 import pytd
 import pytd.pandas_td as td
 
+def ttd_post_rqst(url, payload):
+   api_key=os.environ["TTD_API_KEY"]
+   client_secret=os.environ["TTD_CLIENT_SECRET"]
+
+   secret = b64decode(client_secret, "client_secret")
+
+   iv = os.urandom(12)
+   cipher = AES.new(secret, AES.MODE_GCM, nonce=iv)
+
+   millisec = int(time.time() * 1000)
+   request_nonce = os.urandom(8)
+
+   # TODO - Reveiw Logging
+   # print(f"\nRequest: Encrypting and sending to {url} : {payload}")
+   # print(f"\nRequest: Encrypting and sending to {url}")
+
+   body = bytearray(millisec.to_bytes(8, 'big'))
+   body += bytearray(request_nonce)
+  #  body += bytearray(bytes(payload, 'utf-8'))
+   if isinstance(payload, str):
+      payload = json.loads(payload)  
+   payload_str = json.dumps(payload)  
+   body += bytearray(bytes(payload_str, 'utf-8'))
+   ciphertext, tag = cipher.encrypt_and_digest(body)
+
+   envelope = bytearray(b'\x01')
+   envelope += bytearray(iv)
+   envelope += bytearray(ciphertext)
+   envelope += bytearray(tag)
+   base64Envelope = base64.b64encode(bytes(envelope)).decode()
+
+   http_response = requests.post(url, base64Envelope, headers={"Authorization": "Bearer " + api_key})
+   # KV: WE better add a check here If the HTTP response is not 200 OK then we gracefully exit or move and 
+   # Log the error (The request it failed and move on. Then send a report to user saying following request has failed
+   # ## THIS IS AN ENHANCEMENT WE HAVE TO PERFORM.
+   print(http_response)
+   return ttd_decrypt(http_response, secret, 0) # 0 - NOT refresh token
+
 
 def post_uid2_requests(db, url, mod_div, mod_idx):
    logevt(db, 'UID2', 'INTL', f'{url}')
    client = pytd.Client(database=db)
    engine = td.create_engine(f"presto:{db}")
    # DELETE all the old TTD UID2 responses
-   df_rqst = td.read_td_query("DELETE FROM ttd_uid2_resp WHERE 1=1", engine)
+  # KV: 002/20/2025 Commented out as the Response data is cleaned out in another workflow
+  # This is to avoid any deletes if there is a workflow failure and not loose track of all
+  #  df_rqst = td.read_td_query("DELETE FROM ttd_uid2_resp WHERE 1=1", engine)
    # SELECT all the TTD UID2 requests matching mod params for this parallel operation
    qry = f"""
    WITH rqst_lst AS (SELECT * , ROW_NUMBER() OVER (ORDER BY src_typ, rnk_num) AS rec_num FROM ttd_uid2_rqst ORDER BY rnk_num)
@@ -32,20 +73,35 @@ def post_uid2_requests(db, url, mod_div, mod_idx):
    df_rqst = td.read_td_query(qry, engine)
    df_rqst = df_rqst.reset_index()
    logevt(db, 'RQST', 'LOAD', f"[{int(int(df_rqst.size) / 5)}] with MOD({mod_div}, {mod_idx})")
-   for idx, row in df_rqst.iterrows():
-      logevt(db, 'RQST', 'POST', f"{row['src_typ']} - {row['rnk_num']}")
-      json_resp = ttd_post_rqst(url, row['ttd_uid2_rqst'])
-      json_resp = json_resp['body']
-      df_resp = json_normalize(json_resp['mapped'])
-      logevt(db, 'RESP', 'RCV', f"{(int(int(df_resp.size) / 3))}")
-      chunk_sz = 10000
-      for sdx in range(0, int((int(df_resp.size) / 3)) + chunk_sz, chunk_sz):
-         df_resp_chunk = df_resp.iloc[sdx:sdx+chunk_sz]
-         logevt(db, 'RESP', 'CHUNK', f'{sdx} - {(int(int(df_resp_chunk.size) / 3))}')
-         if (0 < df_resp_chunk.size):
-            client.load_table_from_dataframe(df_resp_chunk, 'ttd_uid2_resp', writer='bulk_import', if_exists='append')
+   # KV: 02/20/2025 Added Retry mechanisim to allow max of 5 retries and then exit cleanly 
+   num_retries = 5
+   retry = 0
+   wait_time = 60 # in seconds
+   while retry < num_retries:
+    try:
+      for idx, row in df_rqst.iterrows():
+          logevt(db, 'RQST', 'POST', f"{row['src_typ']} - {row['rnk_num']}")
+          json_resp = ttd_post_rqst(url, row['ttd_uid2_rqst'])
+          json_resp = json_resp['body']
+          df_resp = json_normalize(json_resp['mapped'])
+          logevt(db, 'RESP', 'RCV', f"{(int(int(df_resp.size) / 3))}")
+          chunk_sz = 100000 #increased to 100K from 10K KV : 02/09/2025
+          for sdx in range(0, int((int(df_resp.size) / 3)) + chunk_sz, chunk_sz):
+            df_resp_chunk = df_resp.iloc[sdx:sdx+chunk_sz]
+            logevt(db, 'RESP', 'CHUNK', f'{sdx} - {(int(int(df_resp_chunk.size) / 3))}')
+            if (0 < df_resp_chunk.size):
+                client.load_table_from_dataframe(df_resp_chunk, 'ttd_uid2_resp', writer='bulk_import', if_exists='append')
+      retry = num_retries
+    except Exception as e:
+        print(f'Attempt({retry}/{num_retries}). Error : ', str(e))
+        print ("Error: " +  str(row['ttd_uid2_rqst']))
+        retry += 1
+        time.sleep(wait_time * retry)
+        if retry == num_retries:
+          print('Error Processing the Json request..Please check the data...')
+          raise
+   # Log Event
    logevt(db, 'UID2', 'FINL', f'{url}')
-
 
 def post_bucket_requests(since_ts, db, url):
    logevt(db, 'BUCKETS', 'INTL', f'{url}')
@@ -57,15 +113,15 @@ def post_bucket_requests(since_ts, db, url):
    # Request all rotated buckets since_ts
    timestamp = datetime.fromisoformat(since_ts.replace('Z', '+00:00'))
     
-    dt_utc = timestamp.astimezone(timezone.utc)
-    dt_utc_without_tz = dt_utc.replace(tzinfo=None)
-    print(dt_utc_without_tz.isoformat())
-    str_rqst = '{"since_timestamp": "'+dt_utc_without_tz.isoformat()+'"}'
+   dt_utc = timestamp.astimezone(timezone.utc)
+   dt_utc_without_tz = dt_utc.replace(tzinfo=None)
+   print(dt_utc_without_tz.isoformat())
+   str_rqst = '{"since_timestamp": "'+dt_utc_without_tz.isoformat()+'"}'
    print(str_rqst) 
    json_resp = ttd_post_rqst(url, str_rqst)
    df_resp = json_normalize(json_resp['body'])
    logevt(db, 'RESP', 'RCV', f'{int(int(df_resp.size) / 2)}')
-   chunk_sz = 50000
+   chunk_sz = 500000 #increased to 500K from 10K KV : 02/09/2025
    for sdx in range(0, int((int(df_resp.size) / 2)) + chunk_sz, chunk_sz):
       df_resp_chunk = df_resp.iloc[sdx:sdx+chunk_sz]
       logevt(db, 'RESP', 'CHUNK', f'{sdx} - {int(int(df_resp_chunk.size) / 2)}')
@@ -113,37 +169,6 @@ def b64decode(b64string, param):
        print(f"Error: <{param}> is not base64 encoded")
        sys.exit()
 
-
-def ttd_post_rqst(url, payload):
-   api_key=os.environ["TTD_API_KEY"]
-   client_secret=os.environ["TTD_CLIENT_SECRET"]
-
-   secret = b64decode(client_secret, "client_secret")
-
-   iv = os.urandom(12)
-   cipher = AES.new(secret, AES.MODE_GCM, nonce=iv)
-
-   millisec = int(time.time() * 1000)
-   request_nonce = os.urandom(8)
-
-   # TODO - Reveiw Logging
-   # print(f"\nRequest: Encrypting and sending to {url} : {payload}")
-   # print(f"\nRequest: Encrypting and sending to {url}")
-
-   body = bytearray(millisec.to_bytes(8, 'big'))
-   body += bytearray(request_nonce)
-   body += bytearray(bytes(payload, 'utf-8'))
-
-   ciphertext, tag = cipher.encrypt_and_digest(body)
-
-   envelope = bytearray(b'\x01')
-   envelope += bytearray(iv)
-   envelope += bytearray(ciphertext)
-   envelope += bytearray(tag)
-   base64Envelope = base64.b64encode(bytes(envelope)).decode()
-
-   http_response = requests.post(url, base64Envelope, headers={"Authorization": "Bearer " + api_key})
-   return ttd_decrypt(http_response, secret, 0) # 0 - NOT refresh token
 
 
 def ttd_decrypt(http_response, secret, is_refresh):
