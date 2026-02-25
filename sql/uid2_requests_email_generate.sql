@@ -5,7 +5,7 @@ WITH tbl AS (
          WHERE is_current = 0
            AND src_typ = 'EMAIL'
           --  AND bucket_id  = 'PENDING' -- Focus on these first then we can remove
-           AND regexp_like(src_Data,'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')  -- Only Valid Emails!
+           AND regexp_like(src_Data,'${email_pattern}')  -- Only Valid Emails!
        )X 
 )
 -- Batch size 10,000

@@ -34,4 +34,4 @@ td_uid2_src_lst:
     src_dii_col: phone_number
     src_dii_typ: PHONE
 
-
+email_pattern: '^(?!\d+@)[a-zA-Z0-9][a-zA-Z0-9._%+-]{0,63}@[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$'
