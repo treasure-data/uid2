@@ -18,8 +18,8 @@ SELECT DISTINCT
   , ${is_current} AS is_current
 FROM ${td_uid2_env.db}.ttd_uid2_ids Uid
 JOIN (SELECT DISTINCT advertising_id, bucket_id , 
-             CASE WHEN regexp_like(identifier, '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$' ) THEN identifier  -- Email
-                  WHEN NOT regexp_like(identifier, '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$' ) AND TRIM(LPAD(identifier,10,'0')) = 10 THEN identifier  -- Phone
+             CASE WHEN regexp_like(identifier, '${email_pattern}' ) THEN identifier  -- Email
+                  WHEN NOT regexp_like(identifier, '${email_pattern}' ) AND TRIM(LPAD(identifier,10,'0')) = 10 THEN identifier  -- Phone
               END as Identifier 
         FROM ttd_uid2_resp) as Resp
    ON Resp.identifier = Uid.src_data
